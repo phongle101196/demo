@@ -4,15 +4,18 @@ import com.example.test.dto.RegisterDTO;
 import com.example.test.dto.UpdateUserDTO;
 import com.example.test.dto.UserDTO;
 import com.example.test.entity.User;
+import com.example.test.exception.NoDataFoundException;
+import com.example.test.exception.UserNotFoundException;
 import com.example.test.repository.UserRepository;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Service
 public class UserServiceImpl implements UserService{
@@ -24,58 +27,32 @@ public class UserServiceImpl implements UserService{
     @Autowired
     private ModelMapper modelMapper;
 
+
     @Override
-    public UserDTO register(RegisterDTO registerDTO) {
-        // check username và email xem có chưa
-        if (userRepository.existsByUsername(registerDTO.getUsername())) {
-            throw new RuntimeException("Username đã tồn tại!");
+    public Page<UserDTO> getAllUsers(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<User> userPage = userRepository.findAll(pageable);
+        // ném ex khi không có data
+        if (userPage.isEmpty()) {
+            throw new NoDataFoundException("Không có dữ liệu người dùng!");
         }
-        if (userRepository.existsByEmail(registerDTO.getEmail())) {
-            throw new RuntimeException("Email đã tồn tại!");
-        }
-
-        // create user
-        User user = new User();
-        user.setUsername(registerDTO.getUsername());
-        user.setEmail(registerDTO.getEmail());
-        user.setPassword(passwordEncoder.encode(registerDTO.getPassword()));
-        user.setPhone(registerDTO.getPhone());
-        user.setFirstName(registerDTO.getFirstName());
-        user.setLastName(registerDTO.getLastName());
-        user.setCreateDate(LocalDateTime.now());
-        user.setAvatarUrl("avatar.png");
-        user.setRole(User.Role.USER);
-
-        // lưu user
-        User savedUser = userRepository.save(user);
-        return modelMapper.map(savedUser, UserDTO.class);
+        // map user sang userDTO
+        Page<UserDTO> userDTOPage = userPage.map(user -> modelMapper.map(user, UserDTO.class));
+        return userDTOPage;
     }
 
     @Override
-    public List<UserDTO> getAllUsers() {
-        List<User> users = userRepository.findAll();
-        return users.stream().map(user -> modelMapper.map(user, UserDTO.class)).collect(Collectors.toList());
-    }
-
-    @Override
-    public UserDTO getUserByUsername(String username) {
+    public UserDTO getCurrentUser(String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(()-> new RuntimeException("Không tìm thấy người dùng với username: "+username));
+                .orElseThrow(()-> new UserNotFoundException("User không tồn tại!"));
         return modelMapper.map(user, UserDTO.class);
     }
 
     @Override
-    public UserDTO getUserById(int id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng với id: " +id));
-        return modelMapper.map(user, UserDTO.class);
-    }
-
-    @Override
-    public UserDTO updateUser(int id, UpdateUserDTO updateUserDTO) {
-        // check người dùng đang cần update
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng với id: " +id));
+    public UserDTO updateCurrentUser(UpdateUserDTO updateUserDTO, String currentUsername) {
+        // tìm user từ db
+        User user = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new UserNotFoundException("User không tồn tại!"));
 
         // update
         if (updateUserDTO.getPhone() != null) {
@@ -97,12 +74,9 @@ public class UserServiceImpl implements UserService{
     }
 
     @Override
-    public void deleteUser(int id) {
-        if (!userRepository.existsById(id)) {
-            throw new RuntimeException("Không tìm thấy người dùng với id: " +id);
-        }
-        userRepository.deleteById(id);
+    public void deleteCurrentUser(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UserNotFoundException("User không tồn tại!"));
+        userRepository.delete(user);
     }
-
-
 }

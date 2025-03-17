@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class RegisterDTO {
     @NotBlank(message = "Username không được để trống!")
+    @Pattern(regexp = "^(?!\\.)(?!.*\\.\\.)(?:[A-Z]|[a-z0-9])[a-z0-9.]{7,49}(?<!\\.)$", message = "Username không hợp lệ!")
     @Size(min = 6, max = 50, message = "Username phải từ 6-50 ký tự!")
     private String username;
 
@@ -21,7 +22,8 @@ public class RegisterDTO {
     private String email;
 
     @NotBlank(message = "Mật khẩu không được để trống!")
-    @Size(min = 6, message = "Mật khẩu phải có ít nhất 6 ký tự!")
+    @Size(min = 8, max = 30, message = "Mật khẩu phải từ 8-30 ký tự!")
+    @Pattern(regexp = "^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,30}$", message = "Mật khẩu không hợp lệ!")
     private String password;
 
     @NotBlank(message = "Số điện thoại không được để trống")
@@ -29,8 +31,10 @@ public class RegisterDTO {
     private String phone;
 
     @NotBlank(message = "Họ không được để trống")
+    @Pattern(regexp = "^(?![ '\\-])(?!.*[ '\\-]{2})[\\p{L} '\\-]{2,50}(?<![ '\\-])$", message = "Họ không hợp lệ!")
     private String firstName;
 
     @NotBlank(message = "Tên không được để trống")
+    @Pattern(regexp = "^(?![ '\\-])(?!.*[ '\\-]{2})[\\p{L} '\\-]{2,50}(?<![ '\\-])$", message = "Tên không hợp lệ!")
     private String lastName;
 }
